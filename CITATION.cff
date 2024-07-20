@@ -18,7 +18,7 @@ authors:
 abstract: "The NAStJA (CPU) benchmark of the JUPITER Benchmark Suite"
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.12787776
+    value: 10.5281/zenodo.12788527
     description: Version-agnostic Zenodo Identifier
 repository-code: 'https://github.com/FZJ-JSC/jubench-nastja/'
 license: MIT
