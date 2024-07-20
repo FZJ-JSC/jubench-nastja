@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jube>
+  <benchmark name="benchmark" outpath="run">
+    <parameterset name="systemParameter" init_with="platform.xml">
+      <parameter name="account">jscbenchmark</parameter>
+      <parameter name="env" separator=";">env</parameter>
+      <parameter name="mail">NONE</parameter>
+      <parameter name="nodes" type="int" default="8">8</parameter>
+
+      <parameter name="taskspernode" type="int" help="equal to number CPUs per node (i.e. always one CPU per MPI rank)" default="96">128</parameter>
+      <parameter name="threadspertask" type="int" default="1">1</parameter>
+      <parameter name="timelimit">30</parameter>
+      <parameter name="executable">compile/nastja/build/nastja</parameter>
+      <parameter name="args_exec">-c config.json -o out0</parameter>
+      <parameter name="queue" separator="|" mode="python">
+        {
+          "juwels": "batch",
+          "jurecadc": "dc-cpu"
+        }["${systemname}"]
+      </parameter>
+      <parameter name="preprocess">${load_modules}</parameter>
+      <parameter name="measurement">time -p</parameter>
+    </parameterset>
+    <parameterset name="compileParameters">
+      <parameter name="build_nthreads">8</parameter>
+    </parameterset>
+
+    <parameterset name="environment">
+      <parameter name="systemname" mode="shell">cat /etc/FZJ/systemname | tr -d "\n"</parameter>
+      <parameter name="load_modules" separator="|" mode="python">
+        {
+          "juwels": "module purge; module load Stages/2024 GCC/12.3.0 OpenMPI CMake/3.26.3 Python SciPy-Stack jq/1.6",
+	  "jurecadc": "module purge; module load Stages/2024 GCC/12.3.0 OpenMPI CMake/3.26.3 Python SciPy-Stack jq/1.6"
+        }["${systemname}"]
+      </parameter>
+      <parameter name="sourcebase">${jube_benchmark_home}/../../nastja/</parameter>
+      <parameter name="source">build</parameter>
+    </parameterset>
+
+    <fileset name="files_compile">
+	    <!--<copy>${jube_benchmark_home}/../../src/nastja</copy>-->
+    </fileset>
+
+    <fileset name="files_run">
+      <copy>${jube_benchmark_home}/../../src/config.json</copy>
+    </fileset>
+
+    <step name="compile" export="true">
+      <use>environment</use>
+      <use from="platform.xml">executeset</use>
+      <use>compileParameters</use>
+      <use>files_compile</use>
+      <do>${load_modules}</do>
+      <do tag="!link">ln -s ${jube_benchmark_home}/../../src/nastja</do>
+      <do tag="!link" work_dir="nastja/build">cmake ../ -DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++`</do>
+      <do tag="!link" work_dir="nastja/build">make -j ${build_nthreads}</do>
+      <do tag="link">echo "Linking..."</do>
+      <do tag="link">ln -s ${sourcebase}</do>
+    </step>
+
+    <step name="execute" iterations="1" depend="compile">
+      <use from="platform.xml">executeset</use>
+      <use>systemParameter</use>
+      <use>files_run</use>
+      <use from="platform.xml">jobfiles</use>
+      <use from="platform.xml">executesub</use>
+      <do>$submit $submit_script</do>
+      <do done_file="$done_file"></do>
+    </step>
+
+    <step name="check_output" iterations="1" depend="execute">
+	  <use>environment</use>
+      <use from="platform.xml">executeset</use>
+      <use>systemParameter</use>
+      <do>python3 ${jube_benchmark_home}/../../benchmark/eval/test_simu.py execute </do>
+    </step>
+
+    <patternset name="pattern_check_output">
+      <pattern name="success" type="int">$jube_pat_int</pattern>
+    </patternset>
+
+    <patternset name="pattern">
+      <pattern name="timePerMC" type="float">average time per step: $jube_pat_fp s</pattern>
+	    <pattern name="overallTime" type="float" mode="python">5050*${timePerMC_last}</pattern>
+    </patternset>
+
+    <analyser name="analyse" reduce="false">
+      <analyse step="execute">
+        <file use="pattern_check_output">out0/ran_correctly.txt</file>
+        <file use="pattern">job.out</file>
+      </analyse>
+    </analyser>
+
+    <result>
+      <use>analyse</use>
+      <table name="result" style="pretty" sort="nodes">
+        <column title="Nodes">nodes</column>
+        <column title="Tasks/Node">taskspernode</column>
+        <column title="Threads/Task">threadspertask</column>
+        <column title="Ran correctly">success</column>
+        <column format=".5f" title="time per MC /s">timePerMC_last</column>
+        <column format=".5f" title="t_run">overallTime</column>
+      </table>
+    </result>
+  </benchmark>
+</jube> 

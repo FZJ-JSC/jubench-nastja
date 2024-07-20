@@ -1,0 +1,6 @@
+Nodes,Tasks/Node,Threads/Task,Build Configuration,time per MC /s
+2,48,1,cpu,0.35414
+4,48,1,cpu,0.15339
+8,48,1,cpu,0.09174
+16,48,1,cpu,0.04928
+32,48,1,cpu,0.02908

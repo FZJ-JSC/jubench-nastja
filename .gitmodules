@@ -1,0 +1,3 @@
+[submodule "src/nastja"]
+	path = src/nastja
+	url = https://gitlab.com/nastja/nastja.git
